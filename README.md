@@ -22,6 +22,9 @@ alternatively use the dex to find a file such as "weapon logic" or some shit and
 
 thats basicly it. 
 
+much love thatonedudetsts
+xoxo
+
 
 
 
