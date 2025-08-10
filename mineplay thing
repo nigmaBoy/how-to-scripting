@@ -1,0 +1,405 @@
+--[[
+    Fixed by AI: The 'generateBorderPath' function has been corrected.
+    The original logic for wrapping text around the border was flawed, causing text to overlap
+    instead of dropping down to a new line after completing a full circuit.
+
+    The fix involves changing how the script detects a "lap". Instead of a faulty check at the
+    beginning of a character, the script now correctly identifies when it transitions from the
+    4th side of the border back to the 1st, and then properly lowers the Y-axis to start a new line.
+
+    Additionally, a nil-indexing error in the `executeBuild` function was fixed. The script was
+    attempting to use the 'ReplicatedStorage' variable at the same time it was being declared,
+    which is not allowed. This has been split into separate lines for proper initialization.
+]]
+
+local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/nigmaBoy/gui/refs/heads/main/IMgui") .. "\nreturn library")()
+
+local FONT_MAP = {
+	A = {"0110","1001","1111","1001","1001"},B = {"1110","1001","1110","1001","1110"},
+	C = {"0111","1000","1000","1000","0111"},D = {"1110","1001","1001","1001","1110"},
+	E = {"1111","1000","1110","1000","1111"},F = {"1111","1000","1110","1000","1000"},
+	G = {"0111","1000","1011","1001","0111"},H = {"1001","1001","1111","1001","1001"},
+	I = {"111","010","010","010","111"},J = {"0011","0001","0001","1001","0110"},
+	K = {"1001","1010","1100","1010","1001"},L = {"1000","1000","1000","1000","1111"},
+	M = {"10001","11011","10101","10001","10001"},N = {"1001","1101","1011","1001","1001"},
+	O = {"0110","1001","1001","1001","0110"},P = {"1110","1001","1110","1000","1000"},
+	Q = {"0110","1001","1001","0110","0001"},R = {"1110","1001","1110","1010","1001"},
+	S = {"0111","1000","0110","0001","1110"},T = {"11111","00100","00100","00100","00100"},
+	U = {"1001","1001","1001","1001","0111"},V = {"10001","10001","01010","01010","00100"},
+	W = {"10001","10001","10101","11011","10001"},X = {"1001","0110","0110","1001"},
+	Y = {"10001","01010","00100","00100","00100"},Z = {"11111","00010","00100","01000","11111"},
+	['1'] = {"010","110","010","010","111"},['2'] = {"0110","1001","0010","0100","1111"},
+	['3'] = {"1110","0001","0110","0001","1110"},['4'] = {"0011","0101","1001","1111","0001"},
+	['5'] = {"1111","1000","1110","0001","1110"},['6'] = {"0110","1000","1110","1001","0110"},
+	['7'] = {"1111","0001","0010","0100","0100"},['8'] = {"0110","1001","0110","1001","0110"},
+	['9'] = {"0110","1001","0111","0001","0110"},['0'] = {"0110","1001","1001","1001","0110"},
+	[' '] = {"000","000","000","000","000"},['.'] = {"0","0","0","0","1"},
+	['!'] = {"1","1","1","0","1"},['?'] = {"0110","1001","0010","0010","0"},
+	['#'] = {"01010","11111","01010","11111","01010"},['<'] = {"001","010","100","010","001"},
+	['>'] = {"100","010","001","010","100"},['/'] = {"001","010","010","100"},
+}
+
+local MASTER_PALETTE = {    { id = "1", color = Color3.fromRGB(126, 157, 201) },
+    { id = "2", color = Color3.fromRGB(209, 207, 208) },
+    { id = "3", color = Color3.fromRGB(144, 143, 141) },
+    { id = "4", color = Color3.fromRGB(59, 67, 72) },
+    { id = "5", color = Color3.fromRGB(32, 35, 39) },
+    { id = "6", color = Color3.fromRGB(119, 74, 47) },
+    { id = "7", color = Color3.fromRGB(156, 44, 40) },
+    { id = "8", color = Color3.fromRGB(189, 121, 43) },
+    { id = "9", color = Color3.fromRGB(207, 186, 63) },
+    { id = "10", color = Color3.fromRGB(118, 173, 41) },
+    { id = "11", color = Color3.fromRGB(82, 111, 35) },
+    { id = "12", color = Color3.fromRGB(31, 139, 142) },
+    { id = "13", color = Color3.fromRGB(71, 172, 193) },
+    { id = "14", color = Color3.fromRGB(51, 60, 150) },
+    { id = "15", color = Color3.fromRGB(127, 40, 165) },
+    { id = "16", color = Color3.fromRGB(182, 84, 177) },
+    { id = "17", color = Color3.fromRGB(202, 157, 176) },
+    { id = "18", color = Color3.fromRGB(97, 62, 39) },
+    { id = "19", color = Color3.fromRGB(73, 146, 38) },
+    { id = "21", color = Color3.fromRGB(119, 172, 41) },
+    { id = "22", color = Color3.fromRGB(153, 93, 49) },
+    { id = "23", color = Color3.fromRGB(96, 71, 45) },
+    { id = "24", color = Color3.fromRGB(106, 202, 199) },
+    { id = "25", color = Color3.fromRGB(187, 184, 189) },
+    { id = "26", color = Color3.fromRGB(98, 59, 37) },
+    { id = "27", color = Color3.fromRGB(127, 122, 128) },
+    { id = "28", color = Color3.fromRGB(116, 115, 117) },
+    { id = "29", color = Color3.fromRGB(156, 138, 132) },
+    { id = "30", color = Color3.fromRGB(186, 187, 188) },
+    { id = "31", color = Color3.fromRGB(113, 112, 106) },
+    { id = "32", color = Color3.fromRGB(45, 49, 55) },
+    { id = "33", color = Color3.fromRGB(20, 24, 27) },
+    { id = "34", color = Color3.fromRGB(82, 50, 34) },
+    { id = "35", color = Color3.fromRGB(127, 34, 37) },
+    { id = "36", color = Color3.fromRGB(189, 88, 33) },
+    { id = "37", color = Color3.fromRGB(200, 160, 41) },
+    { id = "38", color = Color3.fromRGB(87, 151, 39) },
+    { id = "39", color = Color3.fromRGB(62, 77, 38) },
+    { id = "40", color = Color3.fromRGB(29, 106, 124) },
+    { id = "41", color = Color3.fromRGB(35, 121, 172) },
+    { id = "42", color = Color3.fromRGB(37, 41, 126) },
+    { id = "43", color = Color3.fromRGB(87, 34, 138) },
+    { id = "44", color = Color3.fromRGB(152, 45, 143) },
+    { id = "45", color = Color3.fromRGB(184, 89, 133) },
+    { id = "46", color = Color3.fromRGB(28, 30, 33) },
+    { id = "47", color = Color3.fromRGB(198, 196, 198) },
+    { id = "48", color = Color3.fromRGB(206, 197, 53) },
+    { id = "49", color = Color3.fromRGB(30, 59, 123) },
+    { id = "50", color = Color3.fromRGB(100, 27, 28) },
+    { id = "51", color = Color3.fromRGB(32, 185, 92) },
+    { id = "52", color = Color3.fromRGB(64, 61, 67) },
+    { id = "53", color = Color3.fromRGB(118, 114, 117) },
+    { id = "54", color = Color3.fromRGB(196, 185, 147) },
+    { id = "55", color = Color3.fromRGB(88, 73, 44) },
+    { id = "56", color = Color3.fromRGB(91, 67, 43) },
+    { id = "57", color = Color3.fromRGB(92, 140, 78) },
+    { id = "58", color = Color3.fromRGB(77, 74, 80) },
+    { id = "59", color = Color3.fromRGB(141, 84, 63) },
+    { id = "60", color = Color3.fromRGB(182, 159, 149) },
+    { id = "61", color = Color3.fromRGB(133, 97, 90) },
+    { id = "62", color = Color3.fromRGB(59, 45, 43) },
+    { id = "63", color = Color3.fromRGB(43, 34, 34) },
+    { id = "64", color = Color3.fromRGB(76, 50, 43) },
+    { id = "65", color = Color3.fromRGB(137, 54, 42) },
+    { id = "66", color = Color3.fromRGB(176, 77, 47) },
+    { id = "67", color = Color3.fromRGB(176, 127, 43) },
+    { id = "68", color = Color3.fromRGB(106, 112, 52) },
+    { id = "69", color = Color3.fromRGB(61, 68, 40) },
+    { id = "70", color = Color3.fromRGB(69, 75, 78) },
+    { id = "71", color = Color3.fromRGB(101, 94, 126) },
+    { id = "72", color = Color3.fromRGB(60, 48, 78) },
+    { id = "73", color = Color3.fromRGB(115, 65, 85) },
+    { id = "74", color = Color3.fromRGB(148, 76, 104) },
+    { id = "75", color = Color3.fromRGB(162, 67, 71) },
+    { id = "76", color = Color3.fromRGB(192, 192, 81) },
+    { id = "77", color = Color3.fromRGB(182, 180, 73) },
+    { id = "78", color = Color3.fromRGB(195, 197, 195) },
+    { id = "79", color = Color3.fromRGB(164, 161, 164) },
+    { id = "80", color = Color3.fromRGB(165, 162, 165) },
+    { id = "81", color = Color3.fromRGB(144, 151, 147) },
+    { id = "82", color = Color3.fromRGB(126, 125, 133) },
+    { id = "83", color = Color3.fromRGB(118, 79, 66) },
+    { id = "100", color = Color3.fromRGB(202, 196, 193) },
+    { id = "101", color = Color3.fromRGB(203, 197, 196) },
+    { id = "102", color = Color3.fromRGB(64, 30, 33) },
+    { id = "104", color = Color3.fromRGB(208, 205, 185) },
+    { id = "105", color = Color3.fromRGB(200, 207, 199) },
+    { id = "106", color = Color3.fromRGB(209, 199, 206) },
+    { id = "107", color = Color3.fromRGB(196, 186, 145) },
+    { id = "108", color = Color3.fromRGB(177, 99, 42) },
+    { id = "109", color = Color3.fromRGB(159, 79, 35) },
+    { id = "110", color = Color3.fromRGB(153, 92, 50) },
+    { id = "111", color = Color3.fromRGB(56, 43, 36) },
+    { id = "112", color = Color3.fromRGB(153, 92, 50) },
+    { id = "113", color = Color3.fromRGB(134, 162, 205) },
+    { id = "114", color = Color3.fromRGB(125, 156, 201) },
+    { id = "115", color = Color3.fromRGB(108, 149, 202) },
+    { id = "116", color = Color3.fromRGB(209, 207, 209) },
+    { id = "117", color = Color3.fromRGB(202, 203, 168) },
+    { id = "118", color = Color3.fromRGB(183, 176, 134) },
+    { id = "120", color = Color3.fromRGB(96, 157, 60) },
+}
+
+local config = {
+    fileName = "",
+    targetLongestAxisSize = 5,
+    buildDelay = 0.12,
+    textToBuild = "",
+    isTextMode = false,
+    isWrapMode = false
+}
+
+local BORDER_SIZE = 346
+local buildCoroutine, isBuilding, currentStartPosition, previewEnabled, previewContainer = nil, false, nil, false, nil
+
+local function findClosestBlock(pixelColor) local bestMatch,smallestDistance=nil,math.huge;for _,b in ipairs(MASTER_PALETTE) do local p,c=pixelColor,b.color;local d=math.sqrt((p.r-c.R*255)^2+(p.g-c.G*255)^2+(p.b-c.B*255)^2);if d<smallestDistance then smallestDistance=d;bestMatch=b end end;return bestMatch end
+local function snapToGrid(p8) local v9=(p8.X-2)/4+0.5;local v10=math.floor(v9)*4+2;local v11=p8.Y/4+0.5;local v12=math.floor(v11)*4;local v13=(p8.Z-2)/4+0.5;local v14=math.floor(v13)*4+2;local v15=v12<-1 and -1 or v12;return Vector3.new(v10,v15,v14) end
+local function bU32(s,o)o=o or 1;local b1,b2,b3,b4=string.byte(s,o)or 0,string.byte(s,o+1)or 0,string.byte(s,o+2)or 0,string.byte(s,o+3)or 0;return b1+b2*2^8+b3*2^16+b4*2^24 end
+local function bI32(s,o)o=o or 1;local b1,b2,b3,b4=string.byte(s,o)or 0,string.byte(s,o+1)or 0,string.byte(s,o+2)or 0,string.byte(s,o+3)or 0;local v=b1+b2*2^8+b3*2^16+b4*2^24;if v>=2^31 then v=v-2^32 end;return v end
+local function bU16(s,o)o=o or 1;local b1=string.byte(s,o)or 0;local b2=string.byte(s,o+1)or 0;return b1+b2*256 end
+local function gPx(x,y,fc,po,w,prs,bppv,bpp,td,ah)if not fc or x<0 or x>=w or y<0 or y>=ah then return end;local yfc=td and y or(ah-1-y);local rso=po+(yfc*prs);local piro=x*bppv;local apo=rso+piro+1;local r,g,b,a=0,0,0,255;if bpp==32 then if apo+3>#fc then return end;b,g,r,a=string.byte(fc,apo),string.byte(fc,apo+1),string.byte(fc,apo+2),string.byte(fc,apo+3)elseif bpp==24 then if apo+2>#fc then return end;b,g,r=string.byte(fc,apo),string.byte(fc,apo+1),string.byte(fc,apo+2)elseif bpp==8 then if apo>#fc then return end;local i=string.byte(fc,apo);if i then r,g,b=i,i,i else return end else return end;if not(r and g and b)then return end;return{r=r,g=g,b=b,a=a}end
+local function rRFC(fn)if not readfile then error("readfile is not available.")end;local s,c=pcall(readfile,fn);if s and c then return c else error("Failed to read file: "..tostring(c))end end
+local function formatTime(seconds)if seconds==math.huge or seconds<0 then return"N/A"end;local m=math.floor(seconds/60)local s=math.floor(seconds%60)return string.format("%02d:%02d",m,s)end
+local function calculateSnappedRotation(startPos)if not startPos then return CFrame.new()end;local targetPoint=Vector3.new(0,startPos.Y,0)local preciseLookAt=CFrame.lookAt(startPos,targetPoint)local _,yaw,_=preciseLookAt:ToOrientation()local yawDegrees=math.deg(yaw)local snappedDegrees=math.round(yawDegrees/90)*90;return CFrame.Angles(0,math.rad(snappedDegrees+180),0)end
+local function scanDirectoryRecursive(path,fileList)if not listfiles or not isfolder or not isfile then return end;local s,items=pcall(listfiles,path);if not s or not items then return end;for _,item in ipairs(items)do local fullPath=(path=="")and item or path.."/"..item;if isfolder(fullPath)then scanDirectoryRecursive(fullPath,fileList)elseif isfile(fullPath)and fullPath:lower():match("%.bmp$")then table.insert(fileList,fullPath)end end end
+
+local function generateBorderPath(text, startY)
+    local pathData = {}
+    local minCoord, maxCoord = -BORDER_SIZE, BORDER_SIZE
+    local cursor = Vector3.new(minCoord, startY, minCoord)
+    local segment = 1
+    local yOffset = 0
+    local fontHeight, lineSpacing, totalHeightPerLine = 5, 2, 7
+
+    local segments = {
+        { dir = Vector3.new(4, 0, 0), corner = "X", limit = maxCoord, rot = CFrame.Angles(0, math.rad(0), 0) },
+        { dir = Vector3.new(0, 0, 4), corner = "Z", limit = maxCoord, rot = CFrame.Angles(0, math.rad(-90), 0) },
+        { dir = Vector3.new(-4, 0, 0), corner = "X", limit = minCoord, rot = CFrame.Angles(0, math.rad(180), 0) },
+        { dir = Vector3.new(0, 0, -4), corner = "Z", limit = minCoord, rot = CFrame.Angles(0, math.rad(90), 0) }
+    }
+
+    for i = 1, #text do
+        local char = string.upper(string.sub(text, i, i)); local fontData = FONT_MAP[char] or FONT_MAP['?']
+        local charWidth = #fontData[1]; local spaceNeeded = (charWidth + 1) * 4
+        
+        local breakCounter = 0
+        while spaceNeeded > 0 do
+            breakCounter = breakCounter + 1; if breakCounter > 10 then break end
+            local currentSegment = segments[segment]; local distToCorner
+            if currentSegment.corner == "X" then distToCorner = math.abs(currentSegment.limit - cursor.X) else distToCorner = math.abs(currentSegment.limit - cursor.Z) end
+            
+            if spaceNeeded <= distToCorner then
+                break
+            else
+                local spaceOnCurrentSegment = math.floor(distToCorner / 4) * 4
+                cursor = cursor + currentSegment.dir * (spaceOnCurrentSegment / 4)
+                spaceNeeded = spaceNeeded - spaceOnCurrentSegment
+                
+                local oldSegment = segment
+                segment = (segment % 4) + 1
+
+                if oldSegment == 4 and segment == 1 then
+                    yOffset = yOffset - totalHeightPerLine * 4
+                    cursor = Vector3.new(minCoord, startY + yOffset, minCoord)
+                end
+            end
+        end
+
+        local charRotation = segments[segment].rot
+        for y = 0, fontHeight - 1 do
+            for x = 0, #fontData[y+1] - 1 do
+                if string.sub(fontData[y+1], x+1, x+1) == '1' then
+                    local localOffset = Vector3.new(x * 4, (fontHeight - 1 - y) * 4, 0)
+                    local rotatedOffset = charRotation * localOffset
+                    table.insert(pathData, { pos = cursor + rotatedOffset, rot = charRotation, type = "1" })
+                end
+            end
+        end
+
+        cursor = cursor + segments[segment].dir * (charWidth + 1)
+    end
+    return pathData
+end
+
+local window = library:AddWindow("BMP Art Builder", { main_color = Color3.fromRGB(80, 120, 200), min_size = Vector2.new(450, 600) })
+local settingsTab = window:AddTab("Settings")
+local statusTab = window:AddTab("Status")
+settingsTab:Show()
+settingsTab:AddLabel("Build from BMP File:")
+local fileDropdown = settingsTab:AddDropdown("Select BMP File", function(selectedFile) config.fileName = selectedFile end)
+local function populateBmpDropdown() if fileDropdown.Clear then fileDropdown:Clear() end; local a, f = {}, {}; for _, i in ipairs(workspace:GetChildren()) do if i:IsA("StringValue") and i.Name:lower():match("%.bmp$") then table.insert(f, i.Name) end end; if listfiles then pcall(function() scanDirectoryRecursive("", f) end) end; for _, p in ipairs(f) do if not table.find(a, p) then fileDropdown:Add(p); table.insert(a, p) end end end
+settingsTab:AddButton("Refresh BMP List", populateBmpDropdown)
+settingsTab:AddLabel("")
+local sizeSlider = settingsTab:AddSlider("Longest Side Size", function(value) config.targetLongestAxisSize = value end, {min = 1, max = 100}); sizeSlider:Set(5)
+settingsTab:AddLabel("")
+settingsTab:AddLabel("OR Build from Text:")
+settingsTab:AddTextBox("Enter Text Here...", function(newText) config.textToBuild = newText end, {["clear"] = false})
+settingsTab:AddLabel("")
+local speedSlider = settingsTab:AddSlider("Build Delay (ms)", function(value) config.buildDelay = value / 1000 end, {min = 0, max = 300}); speedSlider:Set(25)
+settingsTab:AddLabel("")
+local getBuildInfo, startBuild, stopBuild, generatePreview, clearPreview
+settingsTab:AddButton("Set New Start Position", function() local p=game.Players.LocalPlayer; local c=p.Character; if not c then return end; local rp=c:FindFirstChild("HumanoidRootPart"); if not rp then return end; local pb=game.ReplicatedStorage:WaitForChild("PlaceBlock"); local tp=rp.CFrame*CFrame.new(0,-rp.Size.Y/2,-5); local sp=snapToGrid(tp.Position); pb:InvokeServer(sp); currentStartPosition=sp; if previewEnabled then generatePreview() end end)
+local imagePreview = statusTab:AddImage({ LayoutOrder = -1 })
+local dimensionsLabel = statusTab:AddLabel("Dimensions: N/A")
+local blockCountLabel = statusTab:AddLabel("Blocks: N/A")
+local etaLabel = statusTab:AddLabel("ETA: N/A")
+local statusLabel = statusTab:AddLabel("Status: Idle")
+statusTab:AddSwitch("Build from Text", function(toggled) config.isTextMode = toggled; getBuildInfo() end)
+statusTab:AddSwitch("Wrap Text on Border", function(toggled) config.isWrapMode = toggled; getBuildInfo() end)
+statusTab:AddSwitch("Preview Build", function(toggled) previewEnabled = toggled; if previewEnabled then generatePreview() else clearPreview() end end)
+statusTab:AddButton("Get Build Info", function() getBuildInfo() end)
+statusTab:AddButton("Start Build", function() startBuild() end)
+statusTab:AddButton("Stop Build", function() stopBuild() end)
+
+function clearPreview() if previewContainer and previewContainer.Parent then previewContainer:Destroy() end; previewContainer = nil end
+
+function generatePreview()
+    clearPreview()
+    if not previewEnabled or not currentStartPosition then return end
+    local success, err = pcall(function()
+        statusLabel.Text = "Status: Generating preview..."
+        previewContainer = Instance.new("Folder", workspace); previewContainer.Name = "BMP_Art_Preview_Container"
+        local rotationOnlyCFrame = calculateSnappedRotation(currentStartPosition)
+        
+        if config.isWrapMode then
+            if config.textToBuild == "" then return end
+            local buildData = generateBorderPath(config.textToBuild, currentStartPosition.Y)
+            for _, data in ipairs(buildData) do
+                local blockModelTemplate = game:GetService("ReplicatedStorage").Blocks:FindFirstChild(data.type or "1")
+                if blockModelTemplate then
+                    local newBlock = blockModelTemplate:Clone(); newBlock.Parent = previewContainer
+                    for _, part in ipairs(newBlock:GetDescendants()) do if part:IsA("BasePart") then part.Anchored, part.CanCollide, part.Transparency = true, false, 0.4 end end
+                    newBlock:PivotTo(CFrame.new(data.pos) * data.rot)
+                end
+                task.wait()
+            end
+        elseif config.isTextMode then
+            if config.textToBuild == "" then return end
+            local cursorX = 0
+            for i = 1, #config.textToBuild do
+                local char = string.upper(string.sub(config.textToBuild, i, i)); local fontData = FONT_MAP[char] or FONT_MAP['?']
+                for y = 0, 4 do for x = 0, #fontData[y+1] - 1 do if string.sub(fontData[y+1], x+1, x+1) == '1' then
+                    local localOffset = Vector3.new((cursorX + x) * 4, (4 - y) * 4, 0); local worldOffset = rotationOnlyCFrame * localOffset; local worldPos = currentStartPosition + worldOffset
+                    local blockModelTemplate = game:GetService("ReplicatedStorage").Blocks:FindFirstChild("1")
+                    if blockModelTemplate then local newBlock = blockModelTemplate:Clone(); newBlock.Parent = previewContainer; for _, part in ipairs(newBlock:GetDescendants()) do if part:IsA("BasePart") then part.Anchored, part.CanCollide, part.Transparency = true, false, 0.4 end end; newBlock:PivotTo(CFrame.new(worldPos) * rotationOnlyCFrame) end
+                end end end; cursorX = cursorX + #fontData[1] + 1; task.wait()
+            end
+        else
+            if config.fileName == "" then return end; local fileContent = rRFC(config.fileName)
+            local pixelOffset, imgWidth, imgHeightRaw, bpp = bU32(fileContent,11), bI32(fileContent,19), bI32(fileContent,23), bU16(fileContent,29)
+            local isTopDown, imgHeight = imgHeightRaw < 0, math.abs(imgHeightRaw); local artWidth, artHeight; if imgWidth >= imgHeight then artWidth = config.targetLongestAxisSize; artHeight = math.floor(artWidth * (imgHeight / imgWidth) + 0.5) else artHeight = config.targetLongestAxisSize; artWidth = math.floor(artHeight * (imgWidth / imgHeight) + 0.5) end
+            local bpp_val, row_stride = bpp/8, math.floor((bpp*imgWidth+31)/32)*4; local BlocksFolder = game:GetService("ReplicatedStorage"):WaitForChild("Blocks")
+            for y = 0, artHeight - 1 do for x = 0, artWidth - 1 do
+                local srcX, srcY = math.floor(x * (imgWidth / artWidth)), math.floor((artHeight - 1 - y) * (imgHeight / artHeight)); local pixelColor = gPx(srcX, srcY, fileContent, pixelOffset, imgWidth, row_stride, bpp_val, bpp, isTopDown, imgHeight)
+                if pixelColor and pixelColor.a >= 128 then local blockData = findClosestBlock(pixelColor); if blockData then
+                    local blockModelTemplate = BlocksFolder:FindFirstChild(blockData.id); if blockModelTemplate then
+                        local newBlock = blockModelTemplate:Clone(); newBlock.Parent = previewContainer; for _, part in ipairs(newBlock:GetDescendants()) do if part:IsA("BasePart") then part.Anchored, part.CanCollide, part.Transparency = true, false, 0.4 end end
+                        local localOffset = Vector3.new(x * 4, y * 4, 0); local worldOffset = rotationOnlyCFrame * localOffset; local worldPos = currentStartPosition + worldOffset
+                        if newBlock:IsA("Model") or newBlock:IsA("BasePart") then newBlock:PivotTo(CFrame.new(worldPos) * rotationOnlyCFrame) end
+                    end
+                end end
+            end; task.wait() end
+        end; statusLabel.Text = "Status: Preview Generated."
+    end)
+    if not success then statusLabel.Text = "Status: Preview Failed: " .. tostring(err); clearPreview() end
+end
+
+function getBuildInfo()
+    statusLabel.Text = "Status: Calculating..."
+    local totalBlocks, artWidth, artHeight = 0, 0, 0
+    if config.isWrapMode then
+        imagePreview.Image = ""; if config.textToBuild == "" then return nil end
+        local buildData = generateBorderPath(config.textToBuild, 0); totalBlocks = #buildData
+        artWidth = (BORDER_SIZE * 2) / 4; artHeight = (BORDER_SIZE * 2) / 4
+    elseif config.isTextMode then
+        imagePreview.Image = ""; if config.textToBuild == "" then return nil end
+        artHeight = 5; local cursorX = 0
+        for i = 1, #config.textToBuild do local char = string.upper(string.sub(config.textToBuild, i, i)); local fontData = FONT_MAP[char] or FONT_MAP['?']; for y = 1, 5 do for x = 1, #fontData[y] do if string.sub(fontData[y], x, x) == '1' then totalBlocks = totalBlocks + 1 end end end; cursorX = cursorX + #fontData[1] + 1 end
+        artWidth = math.max(0, cursorX - 1)
+    else
+        if config.fileName == "" then return nil end
+        if getcustomasset then pcall(function() imagePreview.Image = getcustomasset(config.fileName) end) end
+        local success, fileContent = pcall(rRFC, config.fileName); if not success or not fileContent or string.sub(fileContent, 1, 2) ~= "BM" then return nil end
+        local pixelOffset, imgWidth, imgHeightRaw, bpp = bU32(fileContent,11), bI32(fileContent,19), bI32(fileContent,23), bU16(fileContent,29)
+        local isTopDown, imgHeight = imgHeightRaw < 0, math.abs(imgHeightRaw); if imgWidth >= imgHeight then artWidth = config.targetLongestAxisSize; artHeight = math.floor(artWidth * (imgHeight / imgWidth) + 0.5) else artHeight = config.targetLongestAxisSize; artWidth = math.floor(artHeight * (imgWidth / imgHeight) + 0.5) end
+        local bpp_val, row_stride = bpp/8, math.floor((bpp*imgWidth+31)/32)*4
+        for y = 0, artHeight - 1 do for x = 0, artWidth - 1 do local srcX, srcY = math.floor(x * (imgWidth / artWidth)), math.floor((artHeight - 1 - y) * (imgHeight / artHeight)); if gPx(srcX, srcY, fileContent, pixelOffset, imgWidth, row_stride, bpp_val, bpp, isTopDown, imgHeight) then totalBlocks = totalBlocks + 1 end end end
+    end
+    dimensionsLabel.Text = string.format("Dimensions: ~%d x %d", artWidth, artHeight)
+    blockCountLabel.Text = string.format("Blocks: %d", totalBlocks)
+    etaLabel.Text = string.format("ETA: %s", formatTime(totalBlocks * config.buildDelay))
+    statusLabel.Text = "Status: Ready. Click Start."
+    if previewEnabled then generatePreview() end
+    return true
+end
+
+function executeBuild()
+    if not getBuildInfo() then isBuilding, buildCoroutine = false, nil; return end
+    task.wait(0.1)
+    local success, err = pcall(function()
+        local rootPart = game.Players.LocalPlayer.Character:WaitForChild("HumanoidRootPart")
+        local originalCFrame = rootPart.CFrame
+        
+        -- =========================================================================================
+        --  BEGINNING OF THE FIX
+        -- =========================================================================================
+        -- The original line tried to declare and use 'ReplicatedStorage' in one go, causing an error.
+        -- It has been split into separate, sequential declarations to fix this.
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local ChangeBlock = ReplicatedStorage:WaitForChild("ChangeBlock")
+        local PlaceBlock = ReplicatedStorage:WaitForChild("PlaceBlock")
+        -- =========================================================================================
+        --  END OF THE FIX
+        -- =========================================================================================
+
+        local rotationOnlyCFrame = calculateSnappedRotation(currentStartPosition)
+        local blocksToPlaceData = {}
+        statusLabel.Text = "Status: Generating pixel map..."
+        if config.isWrapMode then
+            blocksToPlaceData = generateBorderPath(config.textToBuild, currentStartPosition.Y)
+        elseif config.isTextMode then
+            local cursorX = 0
+            for i = 1, #config.textToBuild do
+                local char = string.upper(string.sub(config.textToBuild, i, i)); local fontData = FONT_MAP[char] or FONT_MAP['?']; local charWidth = #fontData[1]
+                for y = 0, 4 do for x = 0, #fontData[y+1] - 1 do if string.sub(fontData[y+1], x+1, x+1) == '1' then
+                    local localOffset = Vector3.new((cursorX + x) * 4, (4 - y) * 4, 0); local worldOffset = rotationOnlyCFrame * localOffset
+                    table.insert(blocksToPlaceData, {pos = currentStartPosition + worldOffset, type = "1"})
+                end end end; cursorX = cursorX + charWidth + 1
+            end
+        else
+            local fileContent = rRFC(config.fileName)
+            local pixelOffset, imgWidth, imgHeightRaw, bpp = bU32(fileContent,11), bI32(fileContent,19), bI32(fileContent,23), bU16(fileContent,29)
+            local isTopDown, imgHeight = imgHeightRaw < 0, math.abs(imgHeightRaw); local artWidth, artHeight; if imgWidth >= imgHeight then artWidth = config.targetLongestAxisSize; artHeight = math.floor(artWidth * (imgHeight / imgWidth) + 0.5) else artHeight = config.targetLongestAxisSize; artWidth = math.floor(artHeight * (imgWidth / imgHeight) + 0.5) end
+            local bpp_val, row_stride = bpp/8, math.floor((bpp*imgWidth+31)/32)*4
+            for y = 0, artHeight - 1 do for x = 0, artWidth - 1 do
+                local srcX, srcY = math.floor(x * (imgWidth / artWidth)), math.floor((artHeight - 1 - y) * (imgHeight / artHeight)); local pixelColor = gPx(srcX, srcY, fileContent, pixelOffset, imgWidth, row_stride, bpp_val, bpp, isTopDown, imgHeight)
+                if pixelColor and pixelColor.a >= 128 then local blockToPlace = findClosestBlock(pixelColor); if blockToPlace then
+                    local localOffset = Vector3.new(x * 4, y * 4, 0); local worldOffset = rotationOnlyCFrame * localOffset
+                    table.insert(blocksToPlaceData, {pos = currentStartPosition + worldOffset, type = blockToPlace.id})
+                end end
+            end end
+        end
+        local totalBlocks = #blocksToPlaceData
+        statusLabel.Text = "Status: Building..."; local blocksPlaced = 0
+        for _, data in ipairs(blocksToPlaceData) do
+            if not isBuilding then statusLabel.Text = "Status: Build Canceled"; rootPart.CFrame = originalCFrame; return end
+            ChangeBlock:InvokeServer(data.type)
+            local snappedPos = snapToGrid(data.pos)
+            rootPart.CFrame = CFrame.new(snappedPos + Vector3.new(0, 4, 0))
+            task.wait(config.buildDelay)
+            PlaceBlock:InvokeServer(snappedPos)
+            blocksPlaced = blocksPlaced + 1
+            blockCountLabel.Text = string.format("Blocks: %d / %d", blocksPlaced, totalBlocks)
+            etaLabel.Text = string.format("ETA: %s", formatTime((totalBlocks - blocksPlaced) * config.buildDelay))
+        end; rootPart.CFrame = originalCFrame
+    end)
+    if not success then statusLabel.Text = "Status: FAILED - " .. tostring(err):sub(1, 50) else statusLabel.Text = "Status: Build Complete!"; etaLabel.Text = "ETA: Done" end
+    isBuilding, buildCoroutine = false, nil
+end
+
+function startBuild() if not isBuilding then clearPreview(); isBuilding = true; buildCoroutine = coroutine.create(executeBuild); coroutine.resume(buildCoroutine) end end
+function stopBuild() if isBuilding then isBuilding = false; statusLabel.Text = "Status: Stopping..." end end
+
+populateBmpDropdown()
