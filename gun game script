@@ -1,0 +1,244 @@
+--!strict
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+local oldGui = playerGui:FindFirstChild("SimpleToggler_V3")
+if oldGui then
+	oldGui:Destroy()
+end
+local State = {
+	isTrainingActive = false,
+	isShootActive = false,
+	training = { world = 1, target = "Train 1" },
+	shoot = { world = 1 },
+	speed = 0.01,
+}
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "SimpleToggler_V3"
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+screenGui.Parent = playerGui
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 420, 0, 240)
+mainFrame.Position = UDim2.new(0.5, -210, 0.1, 0)
+mainFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+mainFrame.BorderColor3 = Color3.fromRGB(100, 100, 100)
+mainFrame.ZIndex = 1
+mainFrame.Parent = screenGui
+local titleLabel = Instance.new("TextLabel", mainFrame)
+titleLabel.Size = UDim2.new(1, 0, 0, 30)
+titleLabel.Text = "Toggler"
+titleLabel.Font = Enum.Font.SourceSansBold
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+titleLabel.ZIndex = 2
+local ui = {}
+local activeDropdown = nil
+local function createDropdown(options, parentFrame, callback)
+	local dropdown = {}
+	local button = Instance.new("TextButton", parentFrame)
+	button.Size = UDim2.new(1, 0, 0, 30)
+	button.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+	button.TextColor3 = Color3.fromRGB(220, 220, 220)
+	button.Text = options[1] .. "  ▾"
+	button.Font = Enum.Font.SourceSans
+	button.AutoButtonColor = false
+	button.ZIndex = 2
+	local frame = Instance.new("ScrollingFrame", screenGui)
+	frame.Visible = false
+	frame.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
+	frame.BorderColor3 = Color3.fromRGB(100, 100, 100)
+	frame.ZIndex = 10
+	frame.ScrollBarThickness = 5
+	frame.ClipsDescendants = true
+	local listLayout = Instance.new("UIListLayout", frame)
+	listLayout.Padding = UDim.new(0, 5)
+	local framePadding = Instance.new("UIPadding", frame)
+	framePadding.PaddingTop = UDim.new(0, 5)
+	framePadding.PaddingBottom = UDim.new(0, 5)
+	framePadding.PaddingLeft = UDim.new(0, 5)
+	framePadding.PaddingRight = UDim.new(0, 5)
+	dropdown.button = button
+	dropdown.frame = frame
+	dropdown.options = {}
+	for i, optionName in ipairs(options) do
+		local optionButton = Instance.new("TextButton", frame)
+		optionButton.Size = UDim2.new(1, -10, 0, 25)
+		optionButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+		optionButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+		optionButton.Text = tostring(optionName)
+		optionButton.AutoButtonColor = false
+		optionButton.ZIndex = 11
+		optionButton.MouseButton1Click:Connect(function()
+			button.Text = tostring(optionName) .. "  ▾"
+			if callback then callback(optionName, i) end
+			dropdown.close()
+		end)
+		table.insert(dropdown.options, optionButton)
+	end
+	function dropdown.open()
+		if activeDropdown and activeDropdown ~= dropdown then
+			activeDropdown.close()
+		end
+		frame.Size = UDim2.new(0, button.AbsoluteSize.X, 0, 140)
+		frame.Position = UDim2.fromOffset(button.AbsolutePosition.X, button.AbsolutePosition.Y + button.AbsoluteSize.Y)
+		frame.Visible = true
+		activeDropdown = dropdown
+	end
+	function dropdown.close()
+		frame.Visible = false
+		if activeDropdown == dropdown then
+			activeDropdown = nil
+		end
+	end
+	function dropdown.setEnabled(enabled)
+		button.Selectable = enabled
+		button.TextColor3 = enabled and Color3.fromRGB(220, 220, 220) or Color3.fromRGB(120, 120, 120)
+	end
+	button.MouseButton1Click:Connect(function()
+		if frame.Visible then
+			dropdown.close()
+		else
+			dropdown.open()
+		end
+	end)
+	return dropdown
+end
+local leftColumn = Instance.new("Frame", mainFrame)
+leftColumn.Size = UDim2.new(0.5, -5, 1, -80)
+leftColumn.Position = UDim2.new(0, 0, 0, 40)
+leftColumn.BackgroundTransparency = 1
+leftColumn.ZIndex = 2
+Instance.new("UIListLayout", leftColumn).Padding = UDim.new(0, 8)
+Instance.new("UIPadding", leftColumn).PaddingLeft = UDim.new(0, 10)
+local rightColumn = Instance.new("Frame", mainFrame)
+rightColumn.Size = UDim2.new(0.5, -5, 1, -80)
+rightColumn.Position = UDim2.new(0.5, 5, 0, 40)
+rightColumn.BackgroundTransparency = 1
+rightColumn.ZIndex = 2
+Instance.new("UIListLayout", rightColumn).Padding = UDim.new(0, 8)
+Instance.new("UIPadding", rightColumn).PaddingRight = UDim.new(0, 10)
+local worldOptions = {}
+for i = 1, 14 do table.insert(worldOptions, "World " .. i) end
+ui.trainToggleButton = Instance.new("TextButton", leftColumn)
+ui.trainToggleButton.Size = UDim2.new(1, 0, 0, 35)
+ui.trainToggleButton.Font = Enum.Font.SourceSansBold
+ui.trainToggleButton.ZIndex = 2
+ui.trainWorldDropdown = createDropdown(worldOptions, leftColumn, function(name, index) State.training.world = index end)
+ui.trainTargetDropdown = createDropdown({"Train 1", "Train 2", "Train 3", "Train 4"}, leftColumn, function(name, i) State.training.target = name end)
+ui.shootToggleButton = Instance.new("TextButton", rightColumn)
+ui.shootToggleButton.Size = UDim2.new(1, 0, 0, 35)
+ui.shootToggleButton.Font = Enum.Font.SourceSansBold
+ui.shootToggleButton.ZIndex = 2
+ui.shootWorldDropdown = createDropdown(worldOptions, rightColumn, function(name, index) State.shoot.world = index end)
+ui.speedInput = Instance.new("TextBox", mainFrame)
+ui.speedInput.Size = UDim2.new(1, -20, 0, 30)
+ui.speedInput.Position = UDim2.new(0, 10, 1, -40)
+ui.speedInput.PlaceholderText = "Speed (e.g., 0.01)"
+ui.speedInput.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+ui.speedInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+ui.speedInput.ClearTextOnFocus = false
+ui.speedInput.ZIndex = 2
+local function makeDraggable(gui, handle)
+	local dragging, dragInput, startPos, dragStart
+	handle.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType.Touch then
+			dragging, dragInput, startPos, dragStart = true, input, gui.Position, input.Position
+		end
+	end)
+	UserInputService.InputChanged:Connect(function(input)
+		if input == dragInput and dragging then
+			gui.Position = startPos + UDim2.fromOffset(input.Position.X - dragStart.X, input.Position.Y - dragStart.Y)
+		end
+	end)
+	UserInputService.InputEnded:Connect(function(input) if input == dragInput then dragging = false end end)
+end
+function updateView()
+	ui.trainToggleButton.Text = State.isTrainingActive and "Stop Training" or "Start Training"
+	ui.trainToggleButton.BackgroundColor3 = State.isTrainingActive and Color3.fromRGB(200, 0, 0) or Color3.fromRGB(0, 150, 0)
+	ui.shootToggleButton.Text = State.isShootActive and "Auto Shoot: ON" or "Auto Shoot: OFF"
+	ui.shootToggleButton.BackgroundColor3 = State.isShootActive and Color3.fromRGB(220, 120, 0) or Color3.fromRGB(80, 80, 80)
+	ui.speedInput.Active = not (State.isTrainingActive or State.isShootActive)
+	ui.speedInput.Text = tostring(State.speed)
+	ui.trainWorldDropdown.setEnabled(not State.isTrainingActive)
+	ui.trainTargetDropdown.setEnabled(not State.isTrainingActive)
+	ui.shootWorldDropdown.setEnabled(not State.isShootActive)
+end
+local function getRemoteEvent()
+	local remotesFolder = ReplicatedStorage:FindFirstChild("Remotes")
+	if not remotesFolder then warn("CRITICAL: Folder 'Remotes' not found in ReplicatedStorage"); return nil end
+	local fireEvent = remotesFolder:FindFirstChild("Fire")
+	if not fireEvent then warn("CRITICAL: Remote 'Fire' not found in Remotes folder"); return nil end
+	return fireEvent
+end
+local function performMainActionLoop()
+	local remoteEvent = getRemoteEvent()
+	if not remoteEvent then State.isTrainingActive = false; updateView(); return end
+	local levelName = "Level" .. State.training.world
+	local trainFolderName = string.gsub(State.training.target, " ", "")
+	local levelsFolder = workspace:FindFirstChild("Levels")
+	local levelFolder = levelsFolder and levelsFolder:FindFirstChild(levelName)
+	local trainFolder = levelFolder and levelFolder:FindFirstChild(trainFolderName)
+	local targetObject = trainFolder and trainFolder:FindFirstChild("Union")
+	if not targetObject then
+		warn(string.format("Path not found for World %d, %s. Stopping.", State.training.world, State.training.target))
+		State.isTrainingActive = false; updateView()
+		return
+	end
+	print("Training started...")
+	while State.isTrainingActive do
+		remoteEvent:FireServer(targetObject)
+		task.wait(State.speed)
+	end
+	print("Training stopped.")
+end
+local function performShootLoop()
+	local remoteEvent = getRemoteEvent()
+	if not remoteEvent then State.isShootActive = false; updateView(); return end
+	local levelName = "Level" .. State.shoot.world
+	local levelsFolder = workspace:FindFirstChild("Levels")
+	local levelFolder = levelsFolder and levelsFolder:FindFirstChild(levelName)
+	local targetObject = levelFolder and levelFolder:FindFirstChild("Goal")
+	if not targetObject then
+		warn(string.format("Goal not found for World %d. Stopping.", State.shoot.world))
+		State.isShootActive = false; updateView()
+		return
+	end
+	print("Auto Shoot started...")
+	while State.isShootActive do
+		remoteEvent:FireServer(targetObject)
+		task.wait(State.speed)
+	end
+	print("Auto Shoot stopped.")
+end
+ui.trainToggleButton.MouseButton1Click:Connect(function()
+	State.isTrainingActive = not State.isTrainingActive
+	updateView()
+	if State.isTrainingActive then task.spawn(performMainActionLoop) end
+end)
+ui.shootToggleButton.MouseButton1Click:Connect(function()
+	State.isShootActive = not State.isShootActive
+	updateView()
+	if State.isShootActive then task.spawn(performShootLoop) end
+end)
+ui.speedInput.FocusLost:Connect(function()
+	local success, number = pcall(tonumber, ui.speedInput.Text)
+	if success and number and number > 0.001 then
+		State.speed = number
+	else
+		State.speed = 0.01
+	end
+	updateView()
+end)
+UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		if activeDropdown and not activeDropdown.frame:IsAncestorOf(input.GetGuiObjectsAtPosition()[1] or Instance.new("Frame")) then
+			activeDropdown.close()
+		end
+	end
+end)
+makeDraggable(mainFrame, titleLabel)
+updateView()
+print("Simple Toggle GUI Loaded and Ready.")
