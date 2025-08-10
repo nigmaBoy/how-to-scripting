@@ -1,0 +1,16 @@
+
+hydroxide (aka better remote spy)
+loadstring(game:HttpGet(('https://raw.githubusercontent.com/nigmaBoy/hydroxide/refs/heads/main/gui'),true))()
+
+inf yeild (only for dex usefull for flight or smth ig)
+loadstring(game:HttpGet(('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'),true))()
+
+dex (for finding local scripts n shit)
+loadstring(game:HttpGet("https://raw.githubusercontent.com/infyiff/backup/main/dex.lua"))()
+
+weird dex like thing i made (for grabing local scripts n shit)
+loadstring(game:HttpGet(('https://raw.githubusercontent.com/nigmaBoy/WeirdDex/refs/heads/main/gui'),true))()
+
+
+
+
