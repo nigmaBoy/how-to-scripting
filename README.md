@@ -37,7 +37,7 @@ automaticly shoot to get trophies (if ur feeling advanced make it be able to aut
   use remotes  
 </details>
 
-i also coded a little thing for this game take a look ````gun game script````
+i also coded a little thing for this game take a look [gun game script](https://github.com/nigmaBoy/how-to-scripting/blob/main/gun%20game%20script)
 
 
 
