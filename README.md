@@ -27,10 +27,11 @@ thats basicly it.
 ill list some games and what you need to make.  
 ````https://www.roblox.com/games/133705272470942/Gun-Simulator````  
 okay so i need you to make a script that would:  
-automaticly train                 (if ur feeling advanced make it be able to train in all worlds at all stations)    
-automaticly shoot to get trophies (if ur feeling advanced make it be able to auto shoot in all worlds)    
+* have a gui with toggles (please)
+* automaticly train                  
+* automaticly shoot to get trophies
 
-
+if ur feeling advanced make it be able to train/shoot in all worlds at all stations
 
 <details>
   <summary>Hint:</summary>
