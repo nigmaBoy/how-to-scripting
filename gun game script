@@ -44,6 +44,7 @@ local function createDropdown(options, parentFrame, callback)
 	button.TextColor3 = Color3.fromRGB(220, 220, 220)
 	button.Text = options[1] .. "  ▾"
 	button.Font = Enum.Font.SourceSans
+	button.TextSize = 14
 	button.AutoButtonColor = false
 	button.ZIndex = 2
 	local frame = Instance.new("ScrollingFrame", screenGui)
@@ -69,6 +70,7 @@ local function createDropdown(options, parentFrame, callback)
 		optionButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
 		optionButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 		optionButton.Text = tostring(optionName)
+		optionButton.TextSize = 14
 		optionButton.AutoButtonColor = false
 		optionButton.ZIndex = 11
 		optionButton.MouseButton1Click:Connect(function()
@@ -125,12 +127,14 @@ for i = 1, 14 do table.insert(worldOptions, "World " .. i) end
 ui.trainToggleButton = Instance.new("TextButton", leftColumn)
 ui.trainToggleButton.Size = UDim2.new(1, 0, 0, 35)
 ui.trainToggleButton.Font = Enum.Font.SourceSansBold
+ui.trainToggleButton.TextSize = 16
 ui.trainToggleButton.ZIndex = 2
 ui.trainWorldDropdown = createDropdown(worldOptions, leftColumn, function(name, index) State.training.world = index end)
 ui.trainTargetDropdown = createDropdown({"Train 1", "Train 2", "Train 3", "Train 4"}, leftColumn, function(name, i) State.training.target = name end)
 ui.shootToggleButton = Instance.new("TextButton", rightColumn)
 ui.shootToggleButton.Size = UDim2.new(1, 0, 0, 35)
 ui.shootToggleButton.Font = Enum.Font.SourceSansBold
+ui.shootToggleButton.TextSize = 16
 ui.shootToggleButton.ZIndex = 2
 ui.shootWorldDropdown = createDropdown(worldOptions, rightColumn, function(name, index) State.shoot.world = index end)
 ui.speedInput = Instance.new("TextBox", mainFrame)
